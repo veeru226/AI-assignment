@@ -1,0 +1,329 @@
+{
+  "requirement": "Build a scalable URL shortener service with APIs, persistence, and analytics.",
+  "classification": {
+    "type": "greenfield",
+    "likely_type": "greenfield",
+    "confidence": 1.0,
+    "ambiguity_score": 2,
+    "signals": {
+      "greenfield": [
+        "build"
+      ],
+      "brownfield": []
+    }
+  },
+  "engineering_problem": "Design and build a new system to satisfy: \"Build a scalable URL shortener service with APIs, persistence, and analytics.\" Scope capabilities: api, persistence, analytics, scalability. Open questions to settle first: vague term: 'scalable', scale target.",
+  "capabilities": [
+    "api",
+    "persistence",
+    "analytics",
+    "scalability"
+  ],
+  "ambiguities": [
+    {
+      "topic": "vague term: 'scalable'",
+      "weight": 1,
+      "issue": "'scalable' is not testable as written.",
+      "clarifying_question": "What load must it handle (requests/sec, records, users) and over what time horizon?",
+      "default_assumption": "Pick a conservative measurable target and confirm it."
+    },
+    {
+      "topic": "scale target",
+      "weight": 1,
+      "issue": "Scalability is requested without numbers.",
+      "clarifying_question": "Expected peak requests/sec, total records, read:write ratio, growth rate?",
+      "default_assumption": "Design for ~1k redirects/sec per instance and horizontal scale-out."
+    },
+    {
+      "topic": "datastore choice",
+      "weight": 0,
+      "issue": "No datastore specified.",
+      "clarifying_question": "Is there a mandated database, or operational constraints (managed service, no Docker)?",
+      "default_assumption": "SQLite for the prototype behind an ORM, PostgreSQL for production."
+    },
+    {
+      "topic": "analytics scope",
+      "weight": 0,
+      "issue": "'Analytics' can mean totals, time series, or segmentation.",
+      "clarifying_question": "Which dimensions (time, referrer, device, geo, unique visitors), freshness and retention?",
+      "default_assumption": "Totals, time series, referrer, device/browser/OS, country, unique visitors."
+    }
+  ],
+  "assumptions": [
+    "Interface is a JSON/REST HTTP API with an OpenAPI contract.",
+    "A relational database is acceptable; schema evolves via migrations.",
+    "Analytics are near-real-time (seconds), aggregated per link, and identifiers are hashed for privacy.",
+    "Horizontal scaling of stateless instances behind a load balancer; numeric targets are to be confirmed.",
+    "Pick a conservative measurable target and confirm it.",
+    "Design for ~1k redirects/sec per instance and horizontal scale-out.",
+    "SQLite for the prototype behind an ORM, PostgreSQL for production.",
+    "Totals, time series, referrer, device/browser/OS, country, unique visitors.",
+    "Engineer reviews and owns all AI-generated output; nothing is accepted without running it."
+  ],
+  "tasks": [
+    {
+      "id": "clarify",
+      "seq": 1,
+      "phase": "Understand",
+      "title": "Clarify requirements and record assumptions",
+      "description": "Resolve open questions, define acceptance criteria and non-goals with the stakeholder.",
+      "depends_on": [],
+      "ai_assist": "Ask AI to list ambiguities and draft clarifying questions; engineer decides which answers are accepted.",
+      "validation": "Acceptance criteria are written, measurable and signed off."
+    },
+    {
+      "id": "design",
+      "seq": 2,
+      "phase": "Design",
+      "title": "Design architecture and data/API contracts",
+      "description": "Choose components, data model, API contract and key trade-offs; document decisions.",
+      "depends_on": [
+        "clarify"
+      ],
+      "ai_assist": "Use AI to compare design options and draft an OpenAPI/schema; engineer selects and justifies.",
+      "validation": "Design review: every requirement maps to a component; trade-offs recorded."
+    },
+    {
+      "id": "scaffold",
+      "seq": 3,
+      "phase": "Build",
+      "title": "Scaffold project, configuration and tooling",
+      "description": "Project layout, dependency management, config via environment, lint/test tooling.",
+      "depends_on": [
+        "design"
+      ],
+      "ai_assist": "AI generates boilerplate; engineer prunes unused dependencies and checks versions exist.",
+      "validation": "Clean checkout installs and runs the (empty) test suite."
+    },
+    {
+      "id": "persistence",
+      "seq": 4,
+      "phase": "Build",
+      "title": "Implement persistent storage layer",
+      "description": "Schema, indexes, constraints and data-access code; migrations strategy.",
+      "depends_on": [
+        "design",
+        "scaffold"
+      ],
+      "ai_assist": "AI drafts models and queries; engineer reviews indexes, constraints and transaction boundaries.",
+      "validation": "Integration tests against a real database; data survives restart."
+    },
+    {
+      "id": "core_logic",
+      "seq": 5,
+      "phase": "Build",
+      "title": "Implement core domain logic and API endpoints",
+      "description": "Request validation, business rules, error model and endpoint handlers.",
+      "depends_on": [
+        "design",
+        "scaffold"
+      ],
+      "ai_assist": "AI generates handlers and validators; engineer verifies edge cases and error semantics.",
+      "validation": "Unit tests for rules; API tests for status codes and error bodies."
+    },
+    {
+      "id": "analytics",
+      "seq": 6,
+      "phase": "Build",
+      "title": "Implement event capture and analytics queries",
+      "description": "Capture events off the hot path, enrich, aggregate by time and dimension.",
+      "depends_on": [
+        "persistence",
+        "core_logic"
+      ],
+      "ai_assist": "AI drafts aggregation queries; engineer checks time-zone, bucketing and index use.",
+      "validation": "Seeded-data tests with known aggregates; query plan check on large data."
+    },
+    {
+      "id": "scalability",
+      "seq": 7,
+      "phase": "Build",
+      "title": "Address scalability: statelessness, async work, limits",
+      "description": "Keep app stateless, move slow work off the request path, identify bottlenecks.",
+      "depends_on": [
+        "core_logic",
+        "persistence"
+      ],
+      "ai_assist": "AI proposes bottlenecks and fixes; engineer validates with measurements, not assumptions.",
+      "validation": "Load test with stated target; document measured throughput and limits."
+    },
+    {
+      "id": "tests",
+      "seq": 8,
+      "phase": "Test",
+      "title": "Write unit and integration tests",
+      "description": "Cover rules, error paths, persistence and API contract; include negative and boundary cases.",
+      "depends_on": [
+        "scaffold",
+        "persistence",
+        "core_logic",
+        "analytics",
+        "scalability"
+      ],
+      "ai_assist": "AI drafts test cases and fixtures; engineer checks they would fail without the feature (no tautologies).",
+      "validation": "Coverage report reviewed for meaningful branches; mutation spot-checks."
+    },
+    {
+      "id": "security_review",
+      "seq": 9,
+      "phase": "Validate",
+      "title": "Security and performance review",
+      "description": "Input validation, injection/SSRF/open-redirect, secrets handling, resource exhaustion, N+1 queries.",
+      "depends_on": [
+        "tests"
+      ],
+      "ai_assist": "AI acts as reviewer producing a checklist; engineer triages and fixes findings.",
+      "validation": "Checklist items closed or explicitly accepted as risks."
+    },
+    {
+      "id": "docs",
+      "seq": 10,
+      "phase": "Document",
+      "title": "Write documentation and API reference",
+      "description": "Setup, usage, architecture/trade-offs, known limitations.",
+      "depends_on": [
+        "tests"
+      ],
+      "ai_assist": "AI drafts docs from code; engineer verifies every command and example actually runs.",
+      "validation": "A new reader can run and evaluate the solution from the README alone."
+    },
+    {
+      "id": "summary",
+      "seq": 11,
+      "phase": "Document",
+      "title": "Produce final engineering summary",
+      "description": "Approach, artifacts, risks, validation results, assumptions and limitations.",
+      "depends_on": [
+        "docs",
+        "security_review"
+      ],
+      "ai_assist": "AI structures the summary; engineer owns every claim and its evidence.",
+      "validation": "Each claim links to a test, measurement or code reference."
+    }
+  ],
+  "execution_order": [
+    "clarify",
+    "design",
+    "scaffold",
+    "persistence",
+    "core_logic",
+    "analytics",
+    "scalability",
+    "tests",
+    "security_review",
+    "docs",
+    "summary"
+  ],
+  "parallel_waves": [
+    [
+      "clarify"
+    ],
+    [
+      "design"
+    ],
+    [
+      "scaffold"
+    ],
+    [
+      "persistence",
+      "core_logic"
+    ],
+    [
+      "analytics",
+      "scalability"
+    ],
+    [
+      "tests"
+    ],
+    [
+      "security_review",
+      "docs"
+    ],
+    [
+      "summary"
+    ]
+  ],
+  "risks": [
+    {
+      "category": "functional",
+      "risk": "Ambiguous requirement leads to building the wrong thing.",
+      "impact": "Rework and missed expectations.",
+      "mitigation": "Resolve blocking questions first; record assumptions; demo early."
+    },
+    {
+      "category": "design",
+      "risk": "Schema/index choices may not suit query patterns as data grows.",
+      "impact": "Slow queries, painful migrations.",
+      "mitigation": "Model access patterns first; index for them; plan migrations (Alembic)."
+    },
+    {
+      "category": "functional",
+      "risk": "Concurrent writes can create duplicates or lose updates.",
+      "impact": "Data integrity issues.",
+      "mitigation": "Use DB constraints and transactions; test concurrent paths."
+    },
+    {
+      "category": "design",
+      "risk": "Writing analytics synchronously on the request path adds latency and couples availability.",
+      "impact": "Slow user-facing requests.",
+      "mitigation": "Queue events and batch-write; accept bounded loss or use a durable broker."
+    },
+    {
+      "category": "functional",
+      "risk": "Privacy: raw IPs/user agents are personal data.",
+      "impact": "Compliance exposure.",
+      "mitigation": "Hash/minimise identifiers, define retention, document."
+    },
+    {
+      "category": "design",
+      "risk": "Scalability target is unquantified so the design may be over- or under-built.",
+      "impact": "Wasted effort or outage under load.",
+      "mitigation": "Agree numeric targets; load-test; document measured limits."
+    },
+    {
+      "category": "ai",
+      "risk": "AI-generated code may contain hallucinated APIs, wrong library versions or subtle logic errors.",
+      "impact": "Runtime failures or incorrect behaviour that looks plausible.",
+      "mitigation": "Run everything; review each hunk; pin dependency versions; prefer small iterative prompts."
+    },
+    {
+      "category": "ai",
+      "risk": "AI-generated tests can be shallow, tautological or mirror the implementation (coverage gaps).",
+      "impact": "False confidence; defects escape.",
+      "mitigation": "Require negative/boundary cases, confirm tests fail without the change, review coverage by branch."
+    },
+    {
+      "category": "ai",
+      "risk": "AI tends to over-engineer or pick inefficient patterns (N+1 queries, blocking I/O on hot paths).",
+      "impact": "Unnecessary complexity or poor performance.",
+      "mitigation": "Set explicit non-functional targets, profile/measure, simplify before accepting."
+    },
+    {
+      "category": "ai",
+      "risk": "AI may suggest insecure defaults (hard-coded secrets, permissive validation).",
+      "impact": "Vulnerabilities shipped unnoticed.",
+      "mitigation": "Security checklist review, secrets via environment, adversarial tests for inputs."
+    }
+  ],
+  "tradeoffs": [
+    "SQLite is zero-setup but single-writer; PostgreSQL scales better at the cost of operating a server.",
+    "Asynchronous event capture keeps the hot path fast but can lose in-flight events on a crash; durable queues cost complexity.",
+    "Stateless instances scale horizontally, but per-process caches/limiters then need shared backends."
+  ],
+  "validation_plan": [
+    "Acceptance criteria are written, measurable and signed off.",
+    "Design review: every requirement maps to a component; trade-offs recorded.",
+    "Clean checkout installs and runs the (empty) test suite.",
+    "Integration tests against a real database; data survives restart.",
+    "Unit tests for rules; API tests for status codes and error bodies.",
+    "Seeded-data tests with known aggregates; query plan check on large data.",
+    "Load test with stated target; document measured throughput and limits.",
+    "Coverage report reviewed for meaningful branches; mutation spot-checks.",
+    "Checklist items closed or explicitly accepted as risks.",
+    "A new reader can run and evaluate the solution from the README alone.",
+    "Each claim links to a test, measurement or code reference.",
+    "All AI-generated code reviewed line by line and executed before acceptance."
+  ],
+  "needs_clarification": false,
+  "context": null
+}

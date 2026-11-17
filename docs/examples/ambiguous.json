@@ -1,0 +1,282 @@
+{
+  "requirement": "Make the system faster and better, with some improvements etc.",
+  "classification": {
+    "type": "ambiguous",
+    "likely_type": "brownfield",
+    "confidence": 1.0,
+    "ambiguity_score": 6,
+    "signals": {
+      "greenfield": [],
+      "brownfield": [
+        "improve"
+      ]
+    }
+  },
+  "engineering_problem": "Clarify, then deliver to satisfy: \"Make the system faster and better, with some improvements etc.\" Scope capabilities: performance. Open questions to settle first: vague term: 'fast', vague term: 'better', vague term: 'improve', vague term: 'etc', vague term: 'some', existing system context.",
+  "capabilities": [
+    "performance"
+  ],
+  "ambiguities": [
+    {
+      "topic": "vague term: 'fast'",
+      "weight": 1,
+      "issue": "'fast' is not testable as written.",
+      "clarifying_question": "What latency target (e.g. p95 < 100 ms) counts as fast?",
+      "default_assumption": "Pick a conservative measurable target and confirm it."
+    },
+    {
+      "topic": "vague term: 'better'",
+      "weight": 1,
+      "issue": "'better' is not testable as written.",
+      "clarifying_question": "Better than what, measured by which metric?",
+      "default_assumption": "Pick a conservative measurable target and confirm it."
+    },
+    {
+      "topic": "vague term: 'improve'",
+      "weight": 1,
+      "issue": "'improve' is not testable as written.",
+      "clarifying_question": "Which metric should improve, from what baseline to what target?",
+      "default_assumption": "Pick a conservative measurable target and confirm it."
+    },
+    {
+      "topic": "vague term: 'etc'",
+      "weight": 1,
+      "issue": "'etc' is not testable as written.",
+      "clarifying_question": "The list is open-ended; which items are mandatory?",
+      "default_assumption": "Pick a conservative measurable target and confirm it."
+    },
+    {
+      "topic": "vague term: 'some'",
+      "weight": 1,
+      "issue": "'some' is not testable as written.",
+      "clarifying_question": "How many / which ones exactly?",
+      "default_assumption": "Pick a conservative measurable target and confirm it."
+    },
+    {
+      "topic": "existing system context",
+      "weight": 1,
+      "issue": "Brownfield work needs the affected code, versions and conventions.",
+      "clarifying_question": "Which module/service is affected, and can the repo be provided (--context-dir)?",
+      "default_assumption": "Follow the conventions of the surrounding code once inspected."
+    }
+  ],
+  "assumptions": [
+    "Pick a conservative measurable target and confirm it.",
+    "Follow the conventions of the surrounding code once inspected.",
+    "Engineer reviews and owns all AI-generated output; nothing is accepted without running it."
+  ],
+  "tasks": [
+    {
+      "id": "clarify",
+      "seq": 1,
+      "phase": "Understand",
+      "title": "Clarify requirements and record assumptions",
+      "description": "Resolve open questions, define acceptance criteria and non-goals with the stakeholder. BLOCKING: the requirement is ambiguous; do not start build tasks until answered.",
+      "depends_on": [],
+      "ai_assist": "Ask AI to list ambiguities and draft clarifying questions; engineer decides which answers are accepted.",
+      "validation": "Acceptance criteria are written, measurable and signed off."
+    },
+    {
+      "id": "understand_code",
+      "seq": 2,
+      "phase": "Understand",
+      "title": "Read existing code and map the affected area",
+      "description": "Locate relevant modules, entry points, data flow and existing tests.",
+      "depends_on": [
+        "clarify"
+      ],
+      "ai_assist": "Use AI to summarise unfamiliar modules and trace call paths; engineer verifies by reading the code.",
+      "validation": "Short written map of impacted files and invariants."
+    },
+    {
+      "id": "perf_baseline",
+      "seq": 3,
+      "phase": "Test",
+      "title": "Measure baseline and profile hot spots",
+      "description": "Benchmark current behaviour so improvements are evidenced.",
+      "depends_on": [
+        "clarify"
+      ],
+      "ai_assist": "AI interprets profiler output; engineer decides what is worth optimising.",
+      "validation": "Before/after numbers on the same workload."
+    },
+    {
+      "id": "design",
+      "seq": 4,
+      "phase": "Design",
+      "title": "Design architecture and data/API contracts",
+      "description": "Choose components, data model, API contract and key trade-offs; document decisions.",
+      "depends_on": [
+        "clarify",
+        "understand_code"
+      ],
+      "ai_assist": "Use AI to compare design options and draft an OpenAPI/schema; engineer selects and justifies.",
+      "validation": "Design review: every requirement maps to a component; trade-offs recorded."
+    },
+    {
+      "id": "characterize",
+      "seq": 5,
+      "phase": "Test",
+      "title": "Add characterization tests for current behaviour",
+      "description": "Pin existing behaviour before changing it so regressions are detectable.",
+      "depends_on": [
+        "understand_code"
+      ],
+      "ai_assist": "AI generates tests from existing behaviour; engineer removes tests that encode bugs.",
+      "validation": "Tests pass on the unmodified code."
+    },
+    {
+      "id": "change",
+      "seq": 6,
+      "phase": "Build",
+      "title": "Implement the change with minimal blast radius",
+      "description": "Apply the enhancement/fix/refactor in small reviewable steps.",
+      "depends_on": [
+        "characterize"
+      ],
+      "ai_assist": "AI proposes diffs; engineer reviews each hunk and rejects unrelated edits.",
+      "validation": "Diff review; all characterization tests still pass."
+    },
+    {
+      "id": "tests",
+      "seq": 7,
+      "phase": "Test",
+      "title": "Write unit and integration tests",
+      "description": "Cover rules, error paths, persistence and API contract; include negative and boundary cases.",
+      "depends_on": [
+        "change"
+      ],
+      "ai_assist": "AI drafts test cases and fixtures; engineer checks they would fail without the feature (no tautologies).",
+      "validation": "Coverage report reviewed for meaningful branches; mutation spot-checks."
+    },
+    {
+      "id": "security_review",
+      "seq": 8,
+      "phase": "Validate",
+      "title": "Security and performance review",
+      "description": "Input validation, injection/SSRF/open-redirect, secrets handling, resource exhaustion, N+1 queries.",
+      "depends_on": [
+        "tests"
+      ],
+      "ai_assist": "AI acts as reviewer producing a checklist; engineer triages and fixes findings.",
+      "validation": "Checklist items closed or explicitly accepted as risks."
+    },
+    {
+      "id": "docs",
+      "seq": 9,
+      "phase": "Document",
+      "title": "Write documentation and API reference",
+      "description": "Setup, usage, architecture/trade-offs, known limitations.",
+      "depends_on": [
+        "tests"
+      ],
+      "ai_assist": "AI drafts docs from code; engineer verifies every command and example actually runs.",
+      "validation": "A new reader can run and evaluate the solution from the README alone."
+    },
+    {
+      "id": "summary",
+      "seq": 10,
+      "phase": "Document",
+      "title": "Produce final engineering summary",
+      "description": "Approach, artifacts, risks, validation results, assumptions and limitations.",
+      "depends_on": [
+        "docs",
+        "security_review"
+      ],
+      "ai_assist": "AI structures the summary; engineer owns every claim and its evidence.",
+      "validation": "Each claim links to a test, measurement or code reference."
+    }
+  ],
+  "execution_order": [
+    "clarify",
+    "understand_code",
+    "perf_baseline",
+    "design",
+    "characterize",
+    "change",
+    "tests",
+    "security_review",
+    "docs",
+    "summary"
+  ],
+  "parallel_waves": [
+    [
+      "clarify"
+    ],
+    [
+      "understand_code",
+      "perf_baseline"
+    ],
+    [
+      "design",
+      "characterize"
+    ],
+    [
+      "change"
+    ],
+    [
+      "tests"
+    ],
+    [
+      "security_review",
+      "docs"
+    ],
+    [
+      "summary"
+    ]
+  ],
+  "risks": [
+    {
+      "category": "functional",
+      "risk": "Ambiguous requirement leads to building the wrong thing.",
+      "impact": "Rework and missed expectations.",
+      "mitigation": "Resolve blocking questions first; record assumptions; demo early."
+    },
+    {
+      "category": "design",
+      "risk": "Optimising without a baseline can target the wrong thing.",
+      "impact": "Complexity with no gain.",
+      "mitigation": "Measure before/after on a representative workload."
+    },
+    {
+      "category": "ai",
+      "risk": "AI-generated code may contain hallucinated APIs, wrong library versions or subtle logic errors.",
+      "impact": "Runtime failures or incorrect behaviour that looks plausible.",
+      "mitigation": "Run everything; review each hunk; pin dependency versions; prefer small iterative prompts."
+    },
+    {
+      "category": "ai",
+      "risk": "AI-generated tests can be shallow, tautological or mirror the implementation (coverage gaps).",
+      "impact": "False confidence; defects escape.",
+      "mitigation": "Require negative/boundary cases, confirm tests fail without the change, review coverage by branch."
+    },
+    {
+      "category": "ai",
+      "risk": "AI tends to over-engineer or pick inefficient patterns (N+1 queries, blocking I/O on hot paths).",
+      "impact": "Unnecessary complexity or poor performance.",
+      "mitigation": "Set explicit non-functional targets, profile/measure, simplify before accepting."
+    },
+    {
+      "category": "ai",
+      "risk": "AI may suggest insecure defaults (hard-coded secrets, permissive validation).",
+      "impact": "Vulnerabilities shipped unnoticed.",
+      "mitigation": "Security checklist review, secrets via environment, adversarial tests for inputs."
+    }
+  ],
+  "tradeoffs": [],
+  "validation_plan": [
+    "Acceptance criteria are written, measurable and signed off.",
+    "Short written map of impacted files and invariants.",
+    "Before/after numbers on the same workload.",
+    "Design review: every requirement maps to a component; trade-offs recorded.",
+    "Tests pass on the unmodified code.",
+    "Diff review; all characterization tests still pass.",
+    "Coverage report reviewed for meaningful branches; mutation spot-checks.",
+    "Checklist items closed or explicitly accepted as risks.",
+    "A new reader can run and evaluate the solution from the README alone.",
+    "Each claim links to a test, measurement or code reference.",
+    "All AI-generated code reviewed line by line and executed before acceptance."
+  ],
+  "needs_clarification": true,
+  "context": null
+}

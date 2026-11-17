@@ -1,0 +1,9 @@
+fastapi>=0.115
+uvicorn>=0.30
+SQLAlchemy>=2.0
+pydantic-settings>=2.4
+user-agents>=2.2
+# Optional: enables MaxMind GeoLite2 country lookups (set GEOIP_DB_PATH)
+geoip2>=4.8
+# Optional: PostgreSQL driver when DATABASE_URL points at Postgres
+# psycopg[binary]>=3.2
