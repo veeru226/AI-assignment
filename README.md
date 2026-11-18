@@ -61,6 +61,11 @@ Errors: `{"error": {"code": "...", "message": "..."}}`. Rate-limited calls get `
 
 Outputs classification (greenfield/brownfield/ambiguous), ambiguities with clarifying questions, assumptions, dependency-ordered tasks with AI-assist and validation per task, risks (functional/design/AI), trade-offs. Samples in `docs/examples/`.
 
+A lightweight standalone variant that emits a JSON engineering proposal (APIs, schemas, code changes, tests, tasks, human review gate):
+
+```powershell
+.\.venv\Scripts\python scripts/requirement_to_output.py "Build a URL shortener with APIs and analytics" --output proposal.json
+```
 ## Configuration
 
 See [.env.example](.env.example). Production requires `SECRET_KEY`. PostgreSQL: set `DATABASE_URL` and install `psycopg[binary]` (not exercised in this repo's tests, see limitations).
