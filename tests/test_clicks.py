@@ -10,6 +10,7 @@ from app.models import ApiKey, Click, Link
 
 
 def _setup(tmp_path, **kw):
+    """Create a temp DB with one key and link, returning (session_factory, ClickRecorder)."""
     engine = make_engine(f"sqlite:///{tmp_path / 'c.db'}")
     Base.metadata.create_all(engine)
     sf = make_session_factory(engine)
@@ -22,10 +23,12 @@ def _setup(tmp_path, **kw):
 
 
 def ev():
+    """Build a ClickEvent for link 1 with a fixed IP and user agent."""
     return ClickEvent(1, datetime.now(timezone.utc), "1.2.3.4", "UA", None)
 
 
 def test_batches_events_and_updates_counter(tmp_path):
+    """Recorded events are persisted in batches and the link click_count is updated."""
     sf, rec = _setup(tmp_path, batch_size=10)
     rec.start()
     for _ in range(25):
@@ -39,6 +42,7 @@ def test_batches_events_and_updates_counter(tmp_path):
 
 
 def test_full_queue_drops_instead_of_blocking(tmp_path):
+    """When the queue is full, record() drops events quickly rather than blocking."""
     _, rec = _setup(tmp_path, queue_size=2)  # worker not started -> queue fills
     start = time.perf_counter()
     for _ in range(5):
@@ -48,6 +52,7 @@ def test_full_queue_drops_instead_of_blocking(tmp_path):
 
 
 def test_stop_drains_pending_events(tmp_path):
+    """Stopping the recorder flushes all pending events to the database."""
     sf, rec = _setup(tmp_path)
     rec.start()
     for _ in range(7):
@@ -58,6 +63,7 @@ def test_stop_drains_pending_events(tmp_path):
 
 
 def test_visitor_hash_is_not_the_raw_ip(tmp_path):
+    """The stored visitor hash is a 32-char digest that does not contain the raw IP."""
     sf, rec = _setup(tmp_path)
     rec.start()
     rec.record(ev())

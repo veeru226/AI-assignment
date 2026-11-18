@@ -4,16 +4,19 @@ from app.codegen import MAX_ID, CodeGenerator, base62_decode, base62_encode
 
 
 def test_base62_roundtrip():
+    """base62 encode followed by decode returns the original integer."""
     for n in (0, 1, 61, 62, 12345678901):
         assert base62_decode(base62_encode(n, width=1)) == n
 
 
 def test_base62_rejects_invalid_chars():
+    """Decoding a string with non-base62 characters raises ValueError."""
     with pytest.raises(ValueError):
         base62_decode("ab$")
 
 
 def test_codes_are_fixed_length_and_roundtrip():
+    """Generated codes are 7 alphanumeric chars and decode back to the original id."""
     gen = CodeGenerator("secret")
     for link_id in (1, 2, 999, 1_000_000, MAX_ID):
         code = gen.encode(link_id)
@@ -22,22 +25,26 @@ def test_codes_are_fixed_length_and_roundtrip():
 
 
 def test_no_collisions_over_sequential_ids():
+    """50,000 sequential ids map to 50,000 distinct codes."""
     gen = CodeGenerator("secret")
     codes = {gen.encode(i) for i in range(1, 50_001)}
     assert len(codes) == 50_000
 
 
 def test_sequential_ids_are_not_sequential_codes():
+    """Consecutive ids produce codes that are far apart, so codes are not guessable in order."""
     gen = CodeGenerator("secret")
     a, b = gen.encode(1), gen.encode(2)
     assert abs(base62_decode(a) - base62_decode(b)) > 1000
 
 
 def test_secret_changes_mapping():
+    """Different secrets map the same id to different codes."""
     assert CodeGenerator("a").encode(42) != CodeGenerator("b").encode(42)
 
 
 def test_out_of_range_id_rejected():
+    """Encoding an id above MAX_ID or a negative id raises ValueError."""
     gen = CodeGenerator("s")
     with pytest.raises(ValueError):
         gen.encode(MAX_ID + 1)

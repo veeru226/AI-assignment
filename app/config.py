@@ -43,6 +43,7 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def _require_real_secret_in_production(self) -> "Settings":
+        """Reject the default development secret when running in production."""
         if self.env == "production" and self.secret_key == _DEV_SECRET:
             raise ValueError("SECRET_KEY must be set in production")
         return self
@@ -50,4 +51,5 @@ class Settings(BaseSettings):
 
 @lru_cache
 def get_settings() -> Settings:
+    """Return the cached application settings."""
     return Settings()

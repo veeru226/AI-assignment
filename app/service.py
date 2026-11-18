@@ -17,6 +17,7 @@ from app.urlutil import normalize_url, url_hash, validate_alias
 
 
 def link_status(link: Link, now: datetime) -> str:
+    """Return "disabled", "expired" or "active" for a link at the given time."""
     if link.deleted_at is not None or not link.is_active:
         return "disabled"
     if link.expires_at is not None and link.expires_at <= now:
@@ -26,6 +27,7 @@ def link_status(link: Link, now: datetime) -> str:
 
 class LinkService:
     def __init__(self, settings: Settings, codegen: CodeGenerator, cache: Cache):
+        """Store the settings, code generator and cache, and derive this service's own hostname."""
         self.settings = settings
         self.codegen = codegen
         self.cache = cache
@@ -33,6 +35,7 @@ class LinkService:
 
     # ---- presentation -------------------------------------------------
     def to_out(self, link: Link) -> LinkOut:
+        """Convert a Link row into its public LinkOut representation with the full short URL."""
         return LinkOut(
             short_code=link.short_code,
             short_url=f"{self.settings.base_url.rstrip('/')}/{link.short_code}",
@@ -48,6 +51,7 @@ class LinkService:
 
     # ---- helpers ------------------------------------------------------
     def _resolve_expiry(self, ttl_seconds: int | None, expires_at: datetime | None, now: datetime) -> datetime | None:
+        """Turn a TTL or absolute expiry into an expiry datetime, enforcing the configured limits."""
         if ttl_seconds is not None:
             if ttl_seconds > self.settings.max_ttl_seconds:
                 raise bad_request(f"ttl_seconds must be <= {self.settings.max_ttl_seconds}")
@@ -124,12 +128,14 @@ class LinkService:
 
     # ---- read / update / delete --------------------------------------
     def get_owned(self, session: Session, owner_id: int, code: str) -> Link:
+        """Return the owner's non-deleted link for the code, or raise not found."""
         link = session.scalars(select(Link).where(Link.short_code == code, Link.api_key_id == owner_id)).first()
         if link is None or link.deleted_at is not None:
             raise not_found()
         return link
 
     def list(self, session: Session, owner_id: int, limit: int, offset: int):
+        """Return a page of the owner's non-deleted links (newest first) and the total count."""
         base = (Link.api_key_id == owner_id, Link.deleted_at.is_(None))
         total = session.scalar(select(func.count()).select_from(Link).where(*base)) or 0
         rows = session.scalars(
@@ -138,6 +144,7 @@ class LinkService:
         return rows, total
 
     def update(self, session: Session, owner_id: int, code: str, req: UpdateLinkRequest) -> Link:
+        """Apply the active flag and expiry changes to an owned link and invalidate its cache entry."""
         link = self.get_owned(session, owner_id, code)
         now = clock.now()
         fields = req.model_fields_set
@@ -150,6 +157,7 @@ class LinkService:
         return link
 
     def delete(self, session: Session, owner_id: int, code: str) -> None:
+        """Soft-delete an owned link, deactivate it and invalidate its cache entry."""
         link = self.get_owned(session, owner_id, code)
         link.deleted_at = clock.now()
         link.is_active = False

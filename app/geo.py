@@ -13,16 +13,19 @@ class GeoResolver(Protocol):
 
 class NullGeoResolver:
     def country(self, ip, header_hint):
+        """Return the country from the header hint only; the IP is ignored."""
         return _clean(header_hint)
 
 
 class MaxMindGeoResolver:
     def __init__(self, db_path: str):
+        """Open the GeoLite2 database at db_path (imports geoip2 lazily)."""
         import geoip2.database  # optional dependency
 
         self._reader = geoip2.database.Reader(db_path)
 
     def country(self, ip, header_hint):
+        """Return the header hint if valid, else look the IP up in the database, else None."""
         hinted = _clean(header_hint)
         if hinted or not ip:
             return hinted
@@ -33,12 +36,14 @@ class MaxMindGeoResolver:
 
 
 def _clean(value: str | None) -> str | None:
+    """Normalise a two-letter country code to uppercase, or None if invalid or a placeholder."""
     if value and _COUNTRY_RE.match(value.strip()) and value.strip().upper() not in {"XX", "T1"}:
         return value.strip().upper()
     return None
 
 
 def build_geo_resolver(db_path: str) -> GeoResolver:
+    """Return a MaxMind resolver if db_path loads, otherwise a header-only resolver."""
     if db_path:
         try:
             return MaxMindGeoResolver(db_path)

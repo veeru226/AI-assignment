@@ -16,6 +16,7 @@ from urllib.parse import urlsplit
 
 
 def main() -> None:
+    """Create a link, load-test its redirect with threads, and print throughput, latency and clicks."""
     ap = argparse.ArgumentParser()
     ap.add_argument("--base", default="http://127.0.0.1:8000")
     ap.add_argument("--key", required=True)
@@ -35,6 +36,7 @@ def main() -> None:
     stop = time.perf_counter() + args.seconds
 
     def worker():
+        """Issue redirect requests until the deadline, then merge latencies and error counts."""
         nonlocal errors
         c = http.client.HTTPConnection(u.hostname, u.port)
         local, bad = [], 0

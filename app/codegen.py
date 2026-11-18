@@ -20,6 +20,7 @@ _ROUNDS = 4
 
 
 def base62_encode(value: int, width: int = CODE_LENGTH) -> str:
+    """Encode a non-negative integer as Base62, left-padded with the zero character to width."""
     if value < 0:
         raise ValueError("value must be non-negative")
     chars = []
@@ -30,6 +31,7 @@ def base62_encode(value: int, width: int = CODE_LENGTH) -> str:
 
 
 def base62_decode(code: str) -> int:
+    """Decode a Base62 string to an integer, raising ValueError on invalid characters."""
     value = 0
     for ch in code:
         idx = ALPHABET.find(ch)
@@ -41,13 +43,16 @@ def base62_decode(code: str) -> int:
 
 class CodeGenerator:
     def __init__(self, secret: str):
+        """Derive the Feistel round key from the secret."""
         self._key = hashlib.sha256(secret.encode()).digest()
 
     def _round(self, round_no: int, half: int) -> int:
+        """Return the keyed HMAC-based round function output for one Feistel half."""
         digest = hmac.new(self._key, bytes([round_no]) + half.to_bytes(3, "big"), hashlib.sha256).digest()
         return int.from_bytes(digest[:3], "big") & _HALF_MASK
 
     def encode(self, link_id: int) -> str:
+        """Map a link id to its obfuscated 7-character Base62 short code."""
         if not 0 <= link_id <= MAX_ID:
             raise ValueError(f"id out of range (max {MAX_ID})")
         left, right = link_id >> _HALF_BITS, link_id & _HALF_MASK
@@ -56,6 +61,7 @@ class CodeGenerator:
         return base62_encode((left << _HALF_BITS) | right)
 
     def decode(self, code: str) -> int:
+        """Invert encode(): recover the link id from a short code, raising ValueError if out of range."""
         value = base62_decode(code)
         if value > MAX_ID:
             raise ValueError("code out of range")

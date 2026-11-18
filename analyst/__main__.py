@@ -7,6 +7,7 @@ from analyst.analyzer import analyze, to_markdown
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Run the analyst CLI and return the process exit code (2 when the requirement is invalid)."""
     p = argparse.ArgumentParser(prog="python -m analyst", description="Turn a requirement into a structured engineering plan.")
     p.add_argument("requirement", nargs="?", help="Requirement text (or use --file / stdin)")
     p.add_argument("--file", help="Read the requirement from a file")

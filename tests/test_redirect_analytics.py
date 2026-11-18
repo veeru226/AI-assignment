@@ -8,11 +8,13 @@ IPHONE = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605
 
 
 def new_link(client, auth, **body):
+    """Create a link (default URL) via the API and return its short code."""
     body.setdefault("url", URL)
     return client.post("/api/v1/links", json=body, headers=auth).json()["short_code"]
 
 
 def click(client, code, ua=CHROME, referer=None, **headers):
+    """GET a short code with the given User-Agent, optional Referer, and extra headers."""
     h = {"User-Agent": ua, **headers}
     if referer:
         h["Referer"] = referer
@@ -20,23 +22,27 @@ def click(client, code, ua=CHROME, referer=None, **headers):
 
 
 def flush(app):
+    """Flush the app's click recorder so queued clicks are persisted."""
     app.state.recorder.flush()
 
 
 # ---- redirect ------------------------------------------------------------
 def test_redirect_302_to_destination(client, auth):
+    """A short code redirects with 302 to the original URL."""
     code = new_link(client, auth)
     r = click(client, code)
     assert r.status_code == 302 and r.headers["location"] == URL
 
 
 def test_unknown_and_malformed_codes_404(client):
+    """Unknown or malformed codes return 404 with a not_found error."""
     assert client.get("/nope123").status_code == 404
     assert client.get("/a").status_code == 404
     assert client.get("/nope123").json()["error"]["code"] == "not_found"
 
 
 def test_expired_link_returns_410_even_when_cached(client, auth, freeze_time):
+    """A link past its TTL returns 410 gone even if it was cached, and reports status expired."""
     code = new_link(client, auth, ttl_seconds=60)
     assert click(client, code).status_code == 302  # cached now
     freeze_time(datetime(2030, 1, 1, 12, 1, 1, tzinfo=timezone.utc))
@@ -46,6 +52,7 @@ def test_expired_link_returns_410_even_when_cached(client, auth, freeze_time):
 
 
 def test_cache_serves_repeat_redirects_without_db_lookup(client, auth, app):
+    """A repeated redirect is served from the cache (cache hit count increases by one)."""
     code = new_link(client, auth)
     click(client, code)
     hits = app.state.cache.hits
@@ -54,6 +61,7 @@ def test_cache_serves_repeat_redirects_without_db_lookup(client, auth, app):
 
 
 def test_head_requests_are_not_counted(client, auth, app):
+    """HEAD requests redirect but do not increment the click count."""
     code = new_link(client, auth)
     assert client.head(f"/{code}").status_code == 302
     flush(app)
@@ -61,12 +69,14 @@ def test_head_requests_are_not_counted(client, auth, app):
 
 
 def test_reserved_routes_not_shadowed(client):
+    """Reserved routes such as /docs and /healthz are not captured by the short-code route."""
     assert client.get("/docs").status_code == 200
     assert client.get("/healthz").status_code == 200
 
 
 # ---- analytics -----------------------------------------------------------
 def test_click_count_and_last_clicked(client, auth, app):
+    """Clicks update the link's click_count and last_clicked_at."""
     code = new_link(client, auth)
     for _ in range(5):
         click(client, code)
@@ -76,6 +86,7 @@ def test_click_count_and_last_clicked(client, auth, app):
 
 
 def test_stats_breakdowns(client, auth, app):
+    """Stats report totals, referrers, browsers, OSes, devices, unique visitors, and timeseries."""
     code = new_link(client, auth)
     click(client, code, ua=CHROME, referer="https://news.example.org/story?id=1")
     click(client, code, ua=CHROME, referer="https://news.example.org/other")
@@ -95,6 +106,7 @@ def test_stats_breakdowns(client, auth, app):
 
 
 def test_unique_visitors_use_forwarded_ip_when_trusted(tmp_path):
+    """With trusted proxy headers, X-Forwarded-For sets unique visitors and CF-IPCountry sets country."""
     from fastapi.testclient import TestClient
 
     from app.config import Settings
@@ -119,6 +131,7 @@ def test_unique_visitors_use_forwarded_ip_when_trusted(tmp_path):
 
 
 def test_forwarded_headers_ignored_by_default(client, auth, app):
+    """Without trust_proxy_headers, forwarded IP and country headers are ignored."""
     code = new_link(client, auth)
     click(client, code, **{"X-Forwarded-For": "1.1.1.1", "CF-IPCountry": "FR"})
     click(client, code, **{"X-Forwarded-For": "2.2.2.2", "CF-IPCountry": "FR"})
@@ -129,6 +142,7 @@ def test_forwarded_headers_ignored_by_default(client, auth, app):
 
 
 def test_timeseries_hourly_and_daily_with_zero_fill(client, auth, app, freeze_time):
+    """Stats timeseries buckets clicks hourly or daily, zero-filling empty buckets."""
     code = new_link(client, auth)
     for ts in (
         datetime(2030, 1, 1, 12, 5, tzinfo=timezone.utc),
@@ -158,6 +172,7 @@ def test_timeseries_hourly_and_daily_with_zero_fill(client, auth, app, freeze_ti
 
 
 def test_stats_validation_and_isolation(client, auth):
+    """Stats reject bad ranges/granularity and are hidden from other owners and unauthenticated calls."""
     code = new_link(client, auth)
     base = f"/api/v1/links/{code}/stats"
     assert client.get(base, params={"from": "2030-02-01T00:00:00Z", "to": "2030-01-01T00:00:00Z"}, headers=auth).status_code == 400

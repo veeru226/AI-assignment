@@ -14,12 +14,14 @@ KEY_PREFIX = "usk_"
 
 
 def hash_key(raw: str) -> str:
+    """Return the SHA-256 hex digest of a raw API key."""
     # API keys are 256-bit random values, so a fast unsalted hash is sufficient
     # (unlike passwords, there is nothing to brute-force).
     return hashlib.sha256(raw.encode()).hexdigest()
 
 
 def create_api_key(session: Session, name: str) -> tuple[ApiKey, str]:
+    """Create and persist a new API key, returning the record and the raw key (shown only once)."""
     raw = KEY_PREFIX + secrets.token_urlsafe(32)
     record = ApiKey(name=name, prefix=raw[:12], key_hash=hash_key(raw), is_active=True, created_at=clock.now())
     session.add(record)
@@ -28,6 +30,7 @@ def create_api_key(session: Session, name: str) -> tuple[ApiKey, str]:
 
 
 def client_ip(request: Request) -> str | None:
+    """Return the client IP, honouring X-Forwarded-For only when proxy headers are trusted."""
     if request.app.state.settings.trust_proxy_headers:
         forwarded = request.headers.get("x-forwarded-for")
         if forwarded:
@@ -36,11 +39,13 @@ def client_ip(request: Request) -> str | None:
 
 
 def get_session(request: Request):
+    """Yield a database session for the request and close it afterwards."""
     with request.app.state.session_factory() as session:
         yield session
 
 
 def _throttle(request: Request, bucket_key: str) -> None:
+    """Consume a rate-limit token for the bucket or raise a 429 with Retry-After."""
     decision = request.app.state.limiter.check(bucket_key)
     if not decision.allowed:
         raise AppError(
@@ -70,6 +75,7 @@ def get_owner(
 
 
 def require_admin(request: Request, x_admin_key: str | None = Header(default=None)) -> None:
+    """Require a valid admin key, rejecting with 403 if disabled or 401 if invalid."""
     configured = request.app.state.settings.admin_api_key
     if not configured:
         raise AppError(403, "admin_disabled", "Key management is disabled (ADMIN_API_KEY not set)")

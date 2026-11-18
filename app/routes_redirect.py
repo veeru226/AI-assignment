@@ -14,11 +14,13 @@ router = APIRouter()
 
 @router.get("/healthz", tags=["ops"])
 def healthz():
+    # Liveness probe: always reports ok.
     return {"status": "ok"}
 
 
 @router.get("/readyz", tags=["ops"])
 def readyz(request: Request, session: Session = Depends(get_session)):
+    # Readiness probe: checks the database and reports cache and click counters.
     try:
         session.execute(text("SELECT 1"))
     except Exception:

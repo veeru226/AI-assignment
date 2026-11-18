@@ -6,12 +6,14 @@ URL = "https://example.com/some/long/path?x=1"
 
 
 def create(client, auth, **body):
+    """POST a link-creation request (default URL) with auth and return the response."""
     body.setdefault("url", URL)
     return client.post("/api/v1/links", json=body, headers=auth)
 
 
 # ---- auth / keys ---------------------------------------------------------
 def test_requires_api_key(client):
+    """Creating a link without a valid API key returns 401 unauthorized."""
     r = client.post("/api/v1/links", json={"url": URL})
     assert r.status_code == 401 and r.json()["error"]["code"] == "unauthorized"
     r = client.post("/api/v1/links", json={"url": URL}, headers={"X-API-Key": "nope"})
@@ -19,12 +21,14 @@ def test_requires_api_key(client):
 
 
 def test_key_issuing_needs_admin(client):
+    """Issuing an API key requires the correct admin key."""
     assert client.post("/api/v1/keys", json={"name": "x"}).status_code == 401
     assert client.post("/api/v1/keys", json={"name": "x"}, headers={"X-Admin-Key": "wrong"}).status_code == 401
     assert client.post("/api/v1/keys", json={"name": "x"}, headers={"X-Admin-Key": ADMIN}).status_code == 201
 
 
 def test_admin_disabled_when_unconfigured(tmp_path):
+    """Key issuance returns 403 when no admin key is configured."""
     from fastapi.testclient import TestClient
 
     from app.config import Settings
@@ -36,6 +40,7 @@ def test_admin_disabled_when_unconfigured(tmp_path):
 
 
 def test_api_key_is_stored_hashed(client, app):
+    """The raw API key is never stored in the key hash or prefix columns."""
     from sqlalchemy import select
 
     from app.models import ApiKey
@@ -49,6 +54,7 @@ def test_api_key_is_stored_hashed(client, app):
 
 # ---- create --------------------------------------------------------------
 def test_create_returns_short_link(client, auth):
+    """Creating a link returns 201 with a 7-char code, short URL, long URL, and Location header."""
     r = create(client, auth)
     assert r.status_code == 201
     body = r.json()
@@ -59,12 +65,14 @@ def test_create_returns_short_link(client, auth):
 
 
 def test_create_is_idempotent_for_same_url(client, auth):
+    """Re-creating the same URL returns 200 with the existing short code."""
     a, b = create(client, auth), create(client, auth)
     assert (a.status_code, b.status_code) == (201, 200)
     assert a.json()["short_code"] == b.json()["short_code"]
 
 
 def test_idempotency_normalizes_url_and_is_per_owner(client, auth):
+    """Equivalent URLs dedupe after normalization, but not across different API keys."""
     a = create(client, auth, url="HTTPS://Example.com:443/p")
     b = create(client, auth, url="https://example.com/p")
     assert a.json()["short_code"] == b.json()["short_code"]
@@ -74,12 +82,14 @@ def test_idempotency_normalizes_url_and_is_per_owner(client, auth):
 
 
 def test_ttl_requests_are_not_deduplicated(client, auth):
+    """Links created with a TTL always get distinct short codes."""
     a = create(client, auth, ttl_seconds=60)
     b = create(client, auth, ttl_seconds=60)
     assert a.json()["short_code"] != b.json()["short_code"]
 
 
 def test_custom_alias_and_conflict(client, auth):
+    """A custom alias is used as the code and redirects; reusing it returns 409 conflict."""
     r = create(client, auth, custom_alias="my-promo")
     assert r.status_code == 201 and r.json()["short_code"] == "my-promo" and r.json()["is_custom"]
     dup = create(client, auth, url="https://other.example.com/", custom_alias="my-promo")
@@ -88,6 +98,7 @@ def test_custom_alias_and_conflict(client, auth):
 
 
 def test_invalid_inputs(client, auth):
+    """Invalid URLs, aliases, TTLs, expiries, and unknown fields are rejected with 4xx errors."""
     assert create(client, auth, url="ftp://x.com").status_code == 422
     assert create(client, auth, url="http://localhost/").json()["error"]["code"] == "invalid_url"
     assert create(client, auth, custom_alias="api").status_code == 422
@@ -100,12 +111,14 @@ def test_invalid_inputs(client, auth):
 
 
 def test_expires_at_must_be_future(client, auth, freeze_time):
+    """An expires_at in the past is rejected with 400."""
     r = create(client, auth, expires_at="2020-01-01T00:00:00Z")
     assert r.status_code == 400
 
 
 # ---- read / update / delete ---------------------------------------------
 def test_get_list_and_owner_isolation(client, auth):
+    """Links can be fetched and paginated by their owner but are hidden from other keys."""
     codes = [create(client, auth, url=f"https://example.com/{i}").json()["short_code"] for i in range(3)]
     assert client.get(f"/api/v1/links/{codes[0]}", headers=auth).status_code == 200
     page = client.get("/api/v1/links?limit=2&offset=0", headers=auth).json()
@@ -117,6 +130,7 @@ def test_get_list_and_owner_isolation(client, auth):
 
 
 def test_disable_enable_invalidates_cache(client, auth):
+    """Disabling a link makes redirects return 410 even when cached; re-enabling restores 302."""
     code = create(client, auth).json()["short_code"]
     assert client.get(f"/{code}").status_code == 302  # warms cache
     r = client.patch(f"/api/v1/links/{code}", json={"is_active": False}, headers=auth)
@@ -127,6 +141,7 @@ def test_disable_enable_invalidates_cache(client, auth):
 
 
 def test_patch_expiry_set_and_clear(client, auth, freeze_time):
+    """PATCH can set expiry via TTL, clear it with null, and rejects an empty body."""
     code = create(client, auth).json()["short_code"]
     r = client.patch(f"/api/v1/links/{code}", json={"ttl_seconds": 30}, headers=auth)
     assert r.json()["expires_at"] is not None
@@ -136,6 +151,7 @@ def test_patch_expiry_set_and_clear(client, auth, freeze_time):
 
 
 def test_delete_is_soft_and_frees_nothing(client, auth):
+    """Deleting a link hides it (410/404) but keeps its alias reserved against reuse."""
     code = create(client, auth).json()["short_code"]
     client.get(f"/{code}")
     assert client.delete(f"/api/v1/links/{code}", headers=auth).status_code == 204
@@ -150,6 +166,7 @@ def test_delete_is_soft_and_frees_nothing(client, auth):
 
 # ---- bulk ----------------------------------------------------------------
 def test_bulk_partial_success(client, auth):
+    """Bulk create reports per-item created/existing/error results and summary counts."""
     items = [
         {"url": "https://example.com/1"},
         {"url": "https://example.com/1"},  # same URL -> existing
@@ -167,6 +184,7 @@ def test_bulk_partial_success(client, auth):
 
 
 def test_bulk_limits(client, auth, settings):
+    """Bulk create rejects empty batches and batches larger than the configured maximum."""
     too_many = [{"url": f"https://example.com/{i}"} for i in range(settings.bulk_max_items + 1)]
     assert client.post("/api/v1/links/bulk", json={"items": too_many}, headers=auth).status_code == 422
     assert client.post("/api/v1/links/bulk", json={"items": []}, headers=auth).status_code == 422
@@ -174,6 +192,7 @@ def test_bulk_limits(client, auth, settings):
 
 # ---- rate limiting -------------------------------------------------------
 def test_rate_limit_per_key(tmp_path):
+    """Requests beyond the burst get 429 with Retry-After, without affecting other keys."""
     from fastapi.testclient import TestClient
 
     from app.config import Settings
@@ -191,6 +210,7 @@ def test_rate_limit_per_key(tmp_path):
 
 
 def test_failed_auth_is_throttled_by_ip(tmp_path):
+    """Repeated failed authentication attempts are rate limited with 429 per client IP."""
     from fastapi.testclient import TestClient
 
     from app.config import Settings
@@ -204,6 +224,7 @@ def test_failed_auth_is_throttled_by_ip(tmp_path):
 
 # ---- ops / docs ----------------------------------------------------------
 def test_health_ready_and_openapi(client):
+    """Health and readiness endpoints respond OK and the OpenAPI spec lists the main routes."""
     assert client.get("/healthz").json() == {"status": "ok"}
     ready = client.get("/readyz").json()
     assert ready["status"] == "ready" and "cache" in ready

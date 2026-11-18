@@ -30,6 +30,7 @@ Scalable URL shortener with persistent storage and click analytics.
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
+    """Build the FastAPI app with its engine, cache, click recorder, limiter, service and routes."""
     settings = settings or get_settings()
     engine = make_engine(settings.database_url)
     session_factory = make_session_factory(engine)
@@ -45,6 +46,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
+        """Create tables and start the click recorder on startup; stop it and dispose the engine on shutdown."""
         Base.metadata.create_all(engine)
         recorder.start()
         yield
@@ -62,12 +64,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.exception_handler(AppError)
     async def _app_error(_: Request, exc: AppError):
+        """Render an AppError as the standard JSON error envelope."""
         return JSONResponse(
             {"error": {"code": exc.code, "message": exc.message}}, status_code=exc.status_code, headers=exc.headers
         )
 
     @app.exception_handler(RequestValidationError)
     async def _validation_error(_: Request, exc: RequestValidationError):
+        """Render request validation failures as a 422 JSON error envelope."""
         detail = "; ".join(
             f"{'.'.join(str(p) for p in e['loc'] if p != 'body')}: {e['msg']}" for e in exc.errors()
         )

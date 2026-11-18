@@ -15,10 +15,12 @@ _DEFAULT_PORTS = {"http": 80, "https": 443}
 
 
 def invalid_url(message: str) -> AppError:
+    """Build a 422 invalid_url AppError with the given message."""
     return AppError(422, "invalid_url", message)
 
 
 def normalize_url(raw: str, *, max_length: int, allow_private: bool, own_host: str | None = None) -> str:
+    """Validate a user URL and return its canonical http(s) form, raising invalid_url on rejection."""
     raw = raw.strip()
     if not raw or len(raw) > max_length:
         raise invalid_url(f"URL must be 1-{max_length} characters")
@@ -50,6 +52,7 @@ def normalize_url(raw: str, *, max_length: int, allow_private: bool, own_host: s
 
 
 def _is_private_host(host: str) -> bool:
+    """Return True for localhost-style names and private, loopback, link-local or reserved IPs."""
     if host == "localhost" or host.endswith((".localhost", ".local", ".internal")):
         return True
     try:
@@ -60,10 +63,12 @@ def _is_private_host(host: str) -> bool:
 
 
 def url_hash(normalized_url: str) -> str:
+    """Return the SHA-256 hex digest of a normalized URL."""
     return hashlib.sha256(normalized_url.encode()).hexdigest()
 
 
 def validate_alias(alias: str) -> str:
+    """Return the alias if it is well-formed, not reserved and not shaped like a generated code."""
     if not ALIAS_RE.match(alias):
         raise AppError(422, "invalid_alias", "Alias must be 3-32 characters of letters, digits, '-' or '_'")
     if alias.lower() in RESERVED_ALIASES:

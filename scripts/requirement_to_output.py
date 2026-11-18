@@ -39,11 +39,13 @@ BROWNFIELD_TERMS = (
 
 
 def _is_url_shortener(requirement: str) -> bool:
+    """Return True if the requirement mentions a URL-shortener term."""
     normalized = requirement.lower()
     return any(term in normalized for term in URL_SHORTENER_TERMS)
 
 
 def _infer_scenario(requirement: str) -> str:
+    """Infer brownfield, ambiguous or greenfield from keywords in the requirement."""
     normalized = requirement.lower()
     if any(term in normalized for term in BROWNFIELD_TERMS):
         return "brownfield"
@@ -53,6 +55,7 @@ def _infer_scenario(requirement: str) -> str:
 
 
 def _questions(requirement: str, is_shortener: bool) -> list[str]:
+    """Return clarifying questions triggered by vague or missing details in the requirement."""
     normalized = requirement.lower()
     questions: list[str] = []
     if any(term in normalized for term in ("fast", "faster", "low latency", "performance")):
@@ -75,6 +78,7 @@ def _questions(requirement: str, is_shortener: bool) -> list[str]:
 
 
 def _shortener_outputs(scenario: str) -> dict[str, Any]:
+    """Return the URL-shortener tasks, APIs, schemas, code changes, tests and docs for a scenario."""
     if scenario == "brownfield":
         tasks = [
             {
@@ -412,6 +416,7 @@ def analyze_requirement(requirement: str, scenario: str = "auto") -> dict[str, A
 
 
 def _read_requirement(args: argparse.Namespace, parser: argparse.ArgumentParser) -> str:
+    """Return the requirement text from the argument or input file, reporting usage errors via the parser."""
     if args.requirement and args.input_file:
         parser.error("provide requirement text or --input-file, not both")
     if args.input_file:
@@ -426,6 +431,7 @@ def _read_requirement(args: argparse.Namespace, parser: argparse.ArgumentParser)
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Run the CLI, writing the JSON proposal to stdout or a file, and return the exit code."""
     parser = argparse.ArgumentParser(
         description="Generate a local, deterministic, human-reviewable engineering proposal."
     )

@@ -10,6 +10,7 @@ ADMIN = "test-admin-key"
 
 @pytest.fixture
 def settings(tmp_path):
+    """Provide test Settings backed by a per-test SQLite file with generous rate limits."""
     return Settings(
         env="test",
         database_url=f"sqlite:///{tmp_path / 'test.db'}",
@@ -24,17 +25,20 @@ def settings(tmp_path):
 
 @pytest.fixture
 def app(settings):
+    """Provide a FastAPI app created from the test settings."""
     return create_app(settings)
 
 
 @pytest.fixture
 def client(app):
+    """Provide a started TestClient (no auto-redirects) bound to https://sho.rt."""
     # follow_redirects=False so tests can assert on the 302 itself
     with TestClient(app, follow_redirects=False, base_url="https://sho.rt") as c:
         yield c
 
 
 def make_key(client, name="tester") -> dict:
+    """Issue an API key via the admin endpoint and return it as an X-API-Key header dict."""
     r = client.post("/api/v1/keys", json={"name": name}, headers={"X-Admin-Key": ADMIN})
     assert r.status_code == 201, r.text
     return {"X-API-Key": r.json()["api_key"]}
@@ -42,6 +46,7 @@ def make_key(client, name="tester") -> dict:
 
 @pytest.fixture
 def auth(client):
+    """Provide auth headers containing a freshly issued API key."""
     return make_key(client)
 
 
@@ -54,6 +59,7 @@ def freeze_time(monkeypatch):
     monkeypatch.setattr(clock, "now", lambda: state["now"])
 
     def set_now(value):
+        """Set the frozen service time to value and return it."""
         state["now"] = value
         return value
 

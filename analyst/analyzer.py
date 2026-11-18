@@ -60,21 +60,25 @@ class Analysis:
     context: dict | None = None
 
     def to_dict(self) -> dict:
+        """Return a shallow copy of the analysis fields as a dict."""
         return self.__dict__.copy()
 
 
 def _matches(text: str, keyword: str, prefix: bool) -> bool:
+    """Return True if the keyword occurs at a word start, as a stem or as a whole word with s/es."""
     kw = re.escape(keyword)
     pattern = rf"\b{kw}" if prefix else rf"\b{kw}(?:s|es)?\b"
     return re.search(pattern, text) is not None
 
 
 def _kw_hit(text: str, keyword: str) -> bool:
+    """Return True if the keyword matches the text, treating long keywords as stems."""
     # short keywords ("ui", "api", "fix") must match whole words, longer ones are stems
     return _matches(text, keyword, prefix=len(keyword) > 4)
 
 
 def detect_capabilities(text: str) -> list[str]:
+    """Return the catalog capabilities whose keywords appear in the text."""
     return [cap for cap, kws in catalog.CAPABILITIES.items() if any(_kw_hit(text, k) for k in kws)]
 
 
@@ -131,6 +135,7 @@ def scan_context(path: str, requirement: str, max_files: int = 2000) -> dict:
 
 
 def _find_ambiguities(text: str, caps: list[str], is_brownfield: bool, has_context: bool) -> list[dict]:
+    """Return weighted ambiguities, each with a clarifying question and default assumption."""
     found: list[dict] = []
     words = re.findall(r"[a-z0-9\-']+", text)
 
@@ -183,6 +188,7 @@ def _find_ambiguities(text: str, caps: list[str], is_brownfield: bool, has_conte
 
 
 def _classify(text: str, caps: list[str], ambiguity_score: int, has_context: bool) -> dict:
+    """Classify the requirement as greenfield, brownfield or ambiguous with signals and confidence."""
     gf = [s for s in catalog.GREENFIELD_SIGNALS if s in text]
     bf = [s for s in catalog.BROWNFIELD_SIGNALS if s in text]
     if any(c in caps for c in ("bugfix", "refactor")):
@@ -203,6 +209,7 @@ def _classify(text: str, caps: list[str], ambiguity_score: int, has_context: boo
 
 
 def _order(tasks: list[dict]) -> tuple[list[str], list[list[str]]]:
+    """Topologically sort tasks into an execution order and parallel waves, raising on cycles."""
     index = {t["id"]: i for i, t in enumerate(tasks)}
     done: set[str] = set()
     order: list[str] = []
@@ -221,6 +228,7 @@ def _order(tasks: list[dict]) -> tuple[list[str], list[list[str]]]:
 
 
 def _build_tasks(caps: list[str], kind: str) -> list[dict]:
+    """Select and wire catalog tasks and their dependencies for the capabilities and project kind."""
     brownfield = kind == "brownfield"
     active = set(caps)
     if brownfield:
@@ -248,6 +256,7 @@ def _build_tasks(caps: list[str], kind: str) -> list[dict]:
 
 
 def _problem_statement(requirement: str, kind: str, caps: list[str], ambiguities: list[dict]) -> str:
+    """Compose the engineering problem statement from the requirement, scope and blocking questions."""
     scope = ", ".join(c.replace("_", " ") for c in caps) or "unspecified"
     mode = {"greenfield": "Design and build a new system", "brownfield": "Change an existing system",
             "ambiguous": "Clarify, then deliver"}[kind]
@@ -257,6 +266,7 @@ def _problem_statement(requirement: str, kind: str, caps: list[str], ambiguities
 
 
 def analyze(requirement: str, context_dir: str | None = None) -> Analysis:
+    """Analyse a requirement into an Analysis; raise ValueError if it is empty."""
     requirement = " ".join(requirement.split())
     if not requirement:
         raise ValueError("requirement must not be empty")
@@ -318,6 +328,7 @@ def analyze(requirement: str, context_dir: str | None = None) -> Analysis:
 
 
 def to_markdown(a: Analysis) -> str:
+    """Render an Analysis as a Markdown report."""
     c = a.classification
     out = [
         "# Requirement Analysis", "",

@@ -15,6 +15,7 @@ class RateDecision:
 
 class TokenBucketLimiter:
     def __init__(self, per_minute: int, burst: int, max_keys: int = 100_000, monotonic=time.monotonic):
+        """Configure the refill rate, burst capacity, key cap and clock."""
         self._rate = per_minute / 60.0
         self._burst = max(burst, 1)
         self._max_keys = max_keys
@@ -23,6 +24,7 @@ class TokenBucketLimiter:
         self._lock = threading.Lock()
 
     def check(self, key: str) -> RateDecision:
+        """Consume one token for the key and return whether the request is allowed."""
         now = self._mono()
         with self._lock:
             tokens, last = self._buckets.get(key, (float(self._burst), now))

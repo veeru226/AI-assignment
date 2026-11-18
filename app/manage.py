@@ -8,6 +8,7 @@ from app import models  # noqa: F401
 
 
 def main() -> None:
+    """Parse CLI arguments and run the create-key command, printing the new API key once."""
     parser = argparse.ArgumentParser(prog="python -m app.manage")
     sub = parser.add_subparsers(dest="cmd", required=True)
     key = sub.add_parser("create-key", help="Issue a new API key")

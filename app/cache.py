@@ -25,6 +25,7 @@ class Cache(Protocol):
 
 class LRUCache:
     def __init__(self, max_entries: int, ttl_seconds: float, monotonic=time.monotonic):
+        """Initialise an empty cache bounded by entry count and per-entry TTL."""
         self._max = max_entries
         self._ttl = ttl_seconds
         self._mono = monotonic
@@ -34,6 +35,7 @@ class LRUCache:
         self.misses = 0
 
     def get(self, key: str) -> CachedLink | None:
+        """Return the unexpired entry for key (refreshing its recency), or None on a miss."""
         with self._lock:
             item = self._data.get(key)
             if item is None:
@@ -49,6 +51,7 @@ class LRUCache:
             return value
 
     def set(self, key: str, value: CachedLink) -> None:
+        """Store an entry and evict the least recently used ones beyond capacity."""
         with self._lock:
             self._data[key] = (self._mono(), value)
             self._data.move_to_end(key)
@@ -56,12 +59,15 @@ class LRUCache:
                 self._data.popitem(last=False)
 
     def delete(self, key: str) -> None:
+        """Remove the entry for key if present."""
         with self._lock:
             self._data.pop(key, None)
 
     def clear(self) -> None:
+        """Remove all entries."""
         with self._lock:
             self._data.clear()
 
     def __len__(self) -> int:
+        """Return the number of stored entries, including expired ones not yet evicted."""
         return len(self._data)

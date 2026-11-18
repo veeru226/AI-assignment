@@ -15,6 +15,7 @@ from app.schemas import (
 
 
 def _top(session: Session, column, where, limit: int, null_label: str) -> list[CountItem]:
+    """Return the most-clicked values of a column, labelling NULLs with null_label."""
     clicks = func.count().label("clicks")
     rows = session.execute(
         select(column, clicks).where(*where).group_by(column).order_by(clicks.desc(), column).limit(limit)
@@ -30,6 +31,7 @@ def link_stats(
     granularity: str,
     top_n: int = 10,
 ) -> StatsOut:
+    """Build click statistics for a link over [start, end] with a zero-filled time series."""
     if start >= end:
         raise bad_request("'from' must be earlier than 'to'")
     limit = MAX_HOURLY_RANGE if granularity == "hour" else MAX_DAILY_RANGE

@@ -49,6 +49,7 @@ class ClickRecorder:
         batch_size: int = 500,
         flush_interval: float = 0.5,
     ):
+        """Configure the recorder; call start() to launch the background writer."""
         self._sf = session_factory
         self._geo = geo
         self._secret = secret.encode()
@@ -60,6 +61,7 @@ class ClickRecorder:
         self.recorded = 0
 
     def start(self) -> None:
+        """Start the background worker thread unless it is already running."""
         if self._thread and self._thread.is_alive():
             return
         self._thread = threading.Thread(target=self._run, name="click-recorder", daemon=True)
@@ -72,6 +74,7 @@ class ClickRecorder:
             self._thread.join(timeout)
 
     def record(self, event: ClickEvent) -> None:
+        """Enqueue a click without blocking, counting it as dropped if the queue is full."""
         try:
             self._queue.put_nowait(event)
         except queue.Full:
@@ -82,6 +85,7 @@ class ClickRecorder:
         self._queue.join()
 
     def _run(self) -> None:
+        """Worker loop: collect queued events into batches and persist them until stopped."""
         stopping = False
         while not stopping:
             batch = []
@@ -103,15 +107,18 @@ class ClickRecorder:
 
     @staticmethod
     def _take(item, batch) -> bool:
+        """Append item to batch unless it is the stop sentinel; return True if stopping."""
         if item is _STOP:
             return True
         batch.append(item)
         return False
 
     def _visitor_hash(self, ip: str | None) -> str:
+        """Return a keyed, truncated HMAC of the IP to identify unique visitors without storing it."""
         return hmac.new(self._secret, (ip or "unknown").encode(), hashlib.sha256).hexdigest()[:32]
 
     def _persist(self, events: list[ClickEvent]) -> None:
+        """Enrich a batch, insert click rows and update link counters in one transaction."""
         rows = []
         per_link: dict[int, tuple[int, datetime]] = {}
         for ev in events:

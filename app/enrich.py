@@ -15,6 +15,7 @@ class ClientInfo:
 
 @lru_cache(maxsize=4096)
 def parse_user_agent(user_agent: str | None) -> ClientInfo:
+    """Parse a User-Agent string into browser, OS and device class (cached)."""
     if not user_agent:
         return ClientInfo("Unknown", "Unknown", "Unknown")
     ua = parse_ua(user_agent[:512])

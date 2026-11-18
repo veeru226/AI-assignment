@@ -5,6 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 def _require_aware(value: datetime | None) -> datetime | None:
+    """Return the value, raising ValueError if it is a naive datetime."""
     if value is not None and value.tzinfo is None:
         raise ValueError("datetime must include a timezone offset, e.g. 2030-01-01T00:00:00Z")
     return value
@@ -20,6 +21,7 @@ class CreateLinkRequest(BaseModel):
 
     @model_validator(mode="after")
     def _check(self):
+        """Reject requests that set both ttl_seconds and expires_at, or a naive expires_at."""
         if self.ttl_seconds is not None and self.expires_at is not None:
             raise ValueError("provide either ttl_seconds or expires_at, not both")
         _require_aware(self.expires_at)
@@ -37,6 +39,7 @@ class UpdateLinkRequest(BaseModel):
 
     @model_validator(mode="after")
     def _check(self):
+        """Reject conflicting expiry fields, a naive expires_at, or an empty update."""
         if self.ttl_seconds is not None and "expires_at" in self.model_fields_set:
             raise ValueError("provide either ttl_seconds or expires_at, not both")
         _require_aware(self.expires_at)

@@ -33,6 +33,7 @@ _ERRORS = {
 
 
 def _service(request: Request):
+    """Return the LinkService stored on the app state."""
     return request.app.state.links
 
 
@@ -98,6 +99,7 @@ def list_links(
     owner: ApiKey = Depends(get_owner),
     session: Session = Depends(get_session),
 ):
+    # List the owner's links with pagination.
     svc = _service(request)
     rows, total = svc.list(session, owner.id, limit, offset)
     return LinkList(items=[svc.to_out(r) for r in rows], total=total, limit=limit, offset=offset)
@@ -105,6 +107,7 @@ def list_links(
 
 @router.get("/links/{code}", response_model=LinkOut, responses=_ERRORS)
 def get_link(code: str, request: Request, owner: ApiKey = Depends(get_owner), session: Session = Depends(get_session)):
+    # Return one of the owner's links by short code.
     svc = _service(request)
     return svc.to_out(svc.get_owned(session, owner.id, code))
 
@@ -130,6 +133,7 @@ def delete_link(code: str, request: Request, owner: ApiKey = Depends(get_owner),
 
 
 def _aware(value: datetime | None) -> datetime | None:
+    """Treat naive datetimes as UTC and pass aware ones (or None) through."""
     if value is not None and value.tzinfo is None:
         return value.replace(tzinfo=timezone.utc)
     return value
