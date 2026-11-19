@@ -26,7 +26,7 @@ AI was used as an execution accelerator while the engineer retained control of e
 ### Initial Prompt
 
 ```text
-Build a scalable URL shortener end to end: APIs, persistent storage, and click analytics. Cover every requirement, and ask for my input before deciding the API, code generation, database, and other implementation details.
+I want to build a URL shortener prototype with APIs, persistent storage, and click analytics. Functional requirements include: 1) Users should be able to submit a long URL and receive a unique short URL. Cover every requirement, and ask for my input before deciding the API, code generation, database, and other implementation details.
 ```
 
 Before asking questions, the AI checked what tooling was available on the machine:
