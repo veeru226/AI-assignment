@@ -25,13 +25,9 @@ AI was used as an execution accelerator while the engineer retained control of e
 
 ### Initial Prompt
 
-The prompt below is shown in the screenshot.
-
 ```text
-Analyze this assignment and build a scalable URL shortener with APIs, persistent storage, and analytics. Make sure every requirement in the assignment is covered, and ask for my input before proceeding with decisions about the API, code generation, database, and other implementation details
+Build a scalable URL shortener end to end: APIs, persistent storage, and click analytics. Cover every requirement, and ask for my input before deciding the API, code generation, database, and other implementation details.
 ```
-
-![Initial requirement prompt](Screenshots/Requriment.png)
 
 Before asking questions, the AI checked what tooling was available on the machine:
 
