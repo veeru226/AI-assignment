@@ -29,13 +29,7 @@ AI was used as an execution accelerator while the engineer retained control of e
 I want to build a URL shortener prototype with APIs, persistent storage, and click analytics. Functional requirements include: 1) Users should be able to submit a long URL and receive a unique short URL. Cover every requirement, and ask for my input before deciding the API, code generation, database, and other implementation details.
 ```
 
-Before asking questions, the AI checked what tooling was available on the machine:
-
-```text
-python --version; node --version; go version; docker --version; java -version 2>&1 | Select-Object -First 1
-```
-
-The terminal confirmation was reviewed and allowed. Result: only Python was installed (no Node, Go, Docker or Java), which is why Node/Java options were marked "needs install".
+The AI checked what tooling was available on the machine. The terminal confirmation was reviewed and allowed. Result: only Python was installed (no Node, Go, Docker or Java), which is why Node/Java options were marked "needs install".
 
 ![Runtime check awaiting approval](Screenshots/python%20version%20check.png)
 
